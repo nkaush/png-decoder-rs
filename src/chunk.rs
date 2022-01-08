@@ -12,6 +12,22 @@ pub struct Chunk {
 }
 
 impl Chunk {
+    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
+        let crc_bytes: Vec<u8> = chunk_type
+            .bytes()
+            .iter()
+            .chain(data.iter())
+            .copied()
+            .collect();
+
+        Chunk {
+            length: data.len() as u32,
+            chunk_type,
+            data,
+            crc: Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(&crc_bytes)
+        }
+    }
+
     pub fn length(&self) -> u32 {
         self.length
     }
@@ -33,7 +49,14 @@ impl Chunk {
     }
     
     pub fn as_bytes(&self) -> Vec<u8> {
-        self.data.clone()
+        self.length
+            .to_be_bytes()
+            .iter()
+            .chain(self.chunk_type.bytes().iter())
+            .chain(self.data.iter())
+            .chain(self.crc.to_be_bytes().iter())
+            .copied()
+            .collect()
     }
 }
 

@@ -9,11 +9,11 @@ pub struct ChunkType {
 }
 
 impl ChunkType {
-    fn bytes(&self) -> [u8; 4] {
+    pub fn bytes(&self) -> [u8; 4] {
         self.type_code
     }
 
-    fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         for b in &self.type_code {
             if !b.is_ascii_lowercase() && !b.is_ascii_uppercase() {
                 return false;
@@ -23,19 +23,19 @@ impl ChunkType {
         self.is_reserved_bit_valid()
     }
 
-    fn is_critical(&self) -> bool {
+    pub fn is_critical(&self) -> bool {
         self.type_code[0].is_ascii_uppercase()
     }
 
-    fn is_public(&self) -> bool {
+    pub fn is_public(&self) -> bool {
         self.type_code[1].is_ascii_uppercase()
     }
 
-    fn is_reserved_bit_valid(&self) -> bool {
+    pub fn is_reserved_bit_valid(&self) -> bool {
         self.type_code[2].is_ascii_uppercase()
     }
 
-    fn is_safe_to_copy(&self) -> bool {
+    pub fn is_safe_to_copy(&self) -> bool {
         self.type_code[3].is_ascii_lowercase()
     }
 }

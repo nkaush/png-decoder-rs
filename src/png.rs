@@ -1,17 +1,123 @@
+use crate::chunk_type::ChunkType;
+use crate::chunk::Chunk;
+use std::convert::{TryFrom, TryInto};
+use std::str::FromStr;
+use std::fmt;
+
 pub struct Png {
-    
+    chunks: Vec<Chunk>
 }
 
 impl Png {
     const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
+
+    pub fn from_chunks(chunks: Vec<Chunk>) -> Png {
+        Png {
+            chunks
+        }
+    }
+
+    pub fn append_chunk(&mut self, chunk: Chunk) {
+        self.chunks.push(chunk);
+    }
+    
+    pub fn remove_chunk(&mut self, chunk_type: &str) -> Result<Chunk, &str> {
+        let cmp: ChunkType = match ChunkType::from_str(chunk_type) {
+            Ok(ct) => ct,
+            Err(_) => return Err("Could not find chunk with specified chunk type.")
+        };
+
+        for idx in 0..self.chunks.len() {
+            if self.chunks[idx].chunk_type() == &cmp {
+                return Ok(self.chunks.remove(idx));
+            }
+        }
+
+        Err("Could not find chunk with specified chunk type.")
+    }
+    
+    pub fn header(&self) -> &[u8; 8] {
+        &Png::STANDARD_HEADER
+    }
+    
+    pub fn chunks(&self) -> &[Chunk] {
+        &self.chunks
+    }
+    
+    pub fn chunk_by_type(&self, chunk_type: &str) -> Option<&Chunk> {
+        let cmp: ChunkType = match ChunkType::from_str(chunk_type) {
+            Ok(ct) => ct,
+            Err(_) => return None
+        };
+
+        for chunk in self.chunks.iter() {
+            if chunk.chunk_type() == &cmp {
+                return Some(&chunk);
+            }
+        }
+
+        None
+    }
+    
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let chunk_bytes: Vec<u8> = self.chunks
+            .iter()
+            .flat_map(|c| c.as_bytes())
+            .collect();
+
+        Png::STANDARD_HEADER
+            .iter()
+            .chain(chunk_bytes.iter())
+            .copied()
+            .collect()
+    }
+}
+
+impl TryFrom<&[u8]> for Png {
+    type Error = &'static str;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {        
+        if value[..8] != Png::STANDARD_HEADER {
+            return Err("PNG header does not match standard signature.");
+        }
+
+        let mut chunks: Vec<Chunk> = Vec::new();
+
+        let mut start: usize = 8;
+        let mut end: usize = start;
+        let mut next_length: usize;
+        let mut length_bytes: [u8; 4];
+
+        println!("length: {}", value.len());
+
+        while end < value.len() {
+            // parse the length of the data of the next chunk
+            length_bytes = value[start..start + 4].try_into().unwrap();
+            next_length = u32::from_be_bytes(length_bytes) as usize;
+
+            // length, chunk type, and crc fields compose 12 bytes in a chunk
+            end = start + next_length + 12;
+
+            chunks.push(Chunk::try_from(&value[start..end])?);
+
+            // start the next chunk at the end of the previous chunk
+            start = end;
+            println!("start: {}\tend: {}", start, end);
+        }
+
+        Ok(Png { chunks })
+    }
+}
+
+impl fmt::Display for Png {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{}", "hi".to_string())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chunk_type::ChunkType;
-    use crate::chunk::Chunk;
-    use std::str::FromStr;
     use std::convert::TryFrom;
 
     fn testing_chunks() -> Vec<Chunk> {
@@ -29,7 +135,8 @@ mod tests {
         Png::from_chunks(chunks)
     }
 
-    fn chunk_from_strings(chunk_type: &str, data: &str) -> Result<Chunk> {
+    fn chunk_from_strings(chunk_type: &str, data: &str) 
+            -> Result<Chunk, Box<dyn std::error::Error>> {
         use std::str::FromStr;
 
         let chunk_type = ChunkType::from_str(chunk_type)?;
