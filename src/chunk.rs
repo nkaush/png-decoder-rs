@@ -52,7 +52,7 @@ impl TryFrom<&[u8]> for Chunk {
             return Err("Computed CRC does not match given CRC.");
         }
 
-        Ok(Chunk{
+        Ok(Chunk {
             length: u32::from_be_bytes(value[..4].try_into().unwrap()),
             chunk_type: ChunkType::try_from(chunk_type_bytes)?,
             data: value[8..value.len() - 4].into(),
