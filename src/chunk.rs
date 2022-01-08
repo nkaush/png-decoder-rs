@@ -4,7 +4,7 @@ use std::string::FromUtf8Error;
 use crc::Crc;
 use std::fmt;
 
-struct Chunk {
+pub struct Chunk {
     length: u32,
     chunk_type: ChunkType,
     data: Vec<u8>,
@@ -12,27 +12,27 @@ struct Chunk {
 }
 
 impl Chunk {
-    fn length(&self) -> u32 {
+    pub fn length(&self) -> u32 {
         self.length
     }
 
-    fn chunk_type(&self) -> &ChunkType {
+    pub fn chunk_type(&self) -> &ChunkType {
         &self.chunk_type
     }
     
-    fn data(&self) -> &[u8] {
+    pub fn data(&self) -> &[u8] {
         &self.data
     }
     
-    fn crc(&self) -> u32 {
+    pub fn crc(&self) -> u32 {
         self.crc
     }
     
-    fn data_as_string(&self) -> Result<String, FromUtf8Error> {
+    pub fn data_as_string(&self) -> Result<String, FromUtf8Error> {
         String::from_utf8(self.data.clone())
     }
     
-    fn as_bytes(&self) -> Vec<u8> {
+    pub fn as_bytes(&self) -> Vec<u8> {
         self.data.clone()
     }
 }
@@ -41,16 +41,10 @@ impl TryFrom<&[u8]> for Chunk {
     type Error = &'static str;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {        
-        let length: u32 = u32::from_be_bytes(value[..4].try_into().unwrap());
-
         let chunk_type_bytes: [u8; 4] = value[4..8].try_into().unwrap();
-        let chunk_type = ChunkType::try_from(chunk_type_bytes)?;
 
-        let data: Vec<u8> = value[8usize..8 + length as usize].into();
-
-        let given_crc_bytes: [u8; 4] = value[value.len() - 4..].try_into().unwrap();
-        let given_crc: u32 = u32::from_be_bytes(given_crc_bytes);
-
+        let crc_bytes: [u8; 4] = value[value.len() - 4..].try_into().unwrap();
+        let given_crc: u32 = u32::from_be_bytes(crc_bytes);
         let crc_obj = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
         let crc: u32 = crc_obj.checksum(&value[4..value.len() - 4]);
 
@@ -59,9 +53,9 @@ impl TryFrom<&[u8]> for Chunk {
         }
 
         Ok(Chunk{
-            length,
-            chunk_type,
-            data,
+            length: u32::from_be_bytes(value[..4].try_into().unwrap()),
+            chunk_type: ChunkType::try_from(chunk_type_bytes)?,
+            data: value[8..value.len() - 4].into(),
             crc
         })
     }
@@ -69,9 +63,10 @@ impl TryFrom<&[u8]> for Chunk {
 
 impl fmt::Display for Chunk {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        // let displayed: &str = str::from_utf8(&self.type_code).unwrap();
-        // write!(f, "{}", displayed.to_owned())
-        todo!()
+        match self.data_as_string() {
+            Ok(s) => write!(f, "{}", s),
+            Err(_) => Err(fmt::Error)
+        }
     }
 }
 
