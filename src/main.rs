@@ -1,13 +1,11 @@
-mod args;
-mod chunk;
-mod chunk_type;
 mod commands;
+mod args;
 mod png;
 
 use args::{Executable, Subcommands};
 use clap::Parser;
 
-fn main() -> Result<(), String> {
+fn main() -> Result<(), String> {    
     let args = Executable::parse();
 
     match &args.command {
