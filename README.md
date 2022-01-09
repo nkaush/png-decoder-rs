@@ -4,11 +4,11 @@ A PNG image encoder/decoder used to hide messages in PNG images.
 # Usage
 The executable this project produces has the capability to...
 * [`encode`](#Encode) a secret message within a PNG image using a secret chunk type code
-* [`decode`](#Decode:) all secret messages within a PNG image using a secret chunk type code
-* [`remove`](#Remove:) all secret messages within a PNG image that use some secret chunk type code
-* [`print`](#Print:) each chunk within a PNG image
+* [`decode`](#Decode) all secret messages within a PNG image using a secret chunk type code
+* [`remove`](#Remove) all secret messages within a PNG image that use some secret chunk type code
+* [`print`](#Print) each chunk within a PNG image
 
-These functionalities correspond to the [`encode`](#Encode), [`decode`](#Decode:), [`remove`](#Remove:), and [`print`](#Print:)
+These functionalities correspond to the [`encode`](#Encode), [`decode`](#Decode), [`remove`](#Remove), and [`print`](#Print)
 subcommands, respectively. The following blocks indicate how to use each subcommand.
 
 ## Encode:
