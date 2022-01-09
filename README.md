@@ -3,6 +3,7 @@ A PNG image encoder/decoder used to hide messages in PNG images.
 
 1. [Usage Instructions](#Usage-Instructions)
 2. [Example Usage](#Example-Usage)
+3. [Build Instructions](#Build-Instructions)
 
 # Usage Instructions
 The executable this project produces has the capability to...
@@ -57,7 +58,7 @@ OPTIONS:
 ## Print:
 ```
 USAGE:
-    png print <PATH>
+    ./png print <PATH>
 
 ARGS:
     <PATH>    The path to the PNG image to print chunks for
@@ -100,3 +101,16 @@ $ ./png remove images/dice.png ruSt
 $ ./png decode images/dice.png ruSt
 $ 
 ```
+
+# Build Instructions
+
+1. Clone this repository
+2. Ensure Rust (and Cargo) are installed in your environment
+3. Build the executable. A `Makefile` has been provided for your convenience.
+
+```
+git clone https://github.com/nkaush/png-decoder-rs.git
+make
+```
+
+The following instructions will generate an executable called `./png` which you can use as shown in the sections above.
