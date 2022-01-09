@@ -77,7 +77,7 @@ impl Chunk {
 }
 
 impl TryFrom<&[u8]> for Chunk {
-    type Error = &'static str;
+    type Error = String;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {        
         let chunk_type_bytes: [u8; 4] = value[4..8].try_into().unwrap();
@@ -88,7 +88,7 @@ impl TryFrom<&[u8]> for Chunk {
         let crc: u32 = crc_obj.checksum(&value[4..value.len() - 4]);
 
         if crc != given_crc {
-            return Err("Computed CRC does not match given CRC.");
+            return Err("Computed CRC does not match given CRC.".into());
         }
 
         Ok(Chunk {

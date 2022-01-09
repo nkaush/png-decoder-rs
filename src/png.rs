@@ -1,5 +1,6 @@
-use crate::chunk_type::ChunkType;
-use crate::chunk::Chunk;
+pub use crate::chunk_type::ChunkType;
+pub use crate::chunk::Chunk;
+
 use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 use std::path::Path;
@@ -22,21 +23,34 @@ impl Png {
     }
 
     /// Creates a `Png` from a file path
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, ()> {
-        todo!()
+    pub fn from_file<P: AsRef<Path> + fmt::Debug>(path: P) 
+            -> Result<Self, String> {
+        let bytes: Vec<u8> = match fs::read(&path) {
+            Ok(b) => b,
+            Err(_) => return Err(format!("Could not open file '{:#?}'", &path))
+        };
+
+        match Png::try_from(bytes.as_ref()) {
+            Ok(png) => Ok(png),
+            Err(e) => Err(e.to_string())
+        }
     }
 
     /// Appends a chunk to the end of this `Png` file's `Chunk` list.
     pub fn append_chunk(&mut self, chunk: Chunk) {
         self.chunks.push(chunk);
+
+        // swap end with first from end to preserve IEND chunk at end
+        let end: usize = self.chunks.len() - 1;
+        self.chunks.swap(end - 1, end);
     }
     
     /// Searches for a `Chunk` with the specified `chunk_type` and removes the 
     /// first matching `Chunk` from this `Png` list of chunks.
-    pub fn remove_chunk(&mut self, chunk_type: &str) -> Result<Chunk, &str> {
+    pub fn remove_chunk(&mut self, chunk_type: &str) -> Result<Chunk, String> {
         let cmp: ChunkType = match ChunkType::from_str(chunk_type) {
             Ok(ct) => ct,
-            Err(_) => return Err("Could not find chunk with specified chunk type.")
+            Err(_) => return Err("Could not find chunk with specified chunk type.".into())
         };
 
         for idx in 0..self.chunks.len() {
@@ -45,7 +59,7 @@ impl Png {
             }
         }
 
-        Err("Could not find chunk with specified chunk type.")
+        Err("Could not find chunk with specified chunk type.".into())
     }
     
     /// The header of this PNG.
@@ -92,11 +106,11 @@ impl Png {
 }
 
 impl TryFrom<&[u8]> for Png {
-    type Error = &'static str;
+    type Error = String;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {        
         if value[..8] != Png::STANDARD_HEADER {
-            return Err("PNG header does not match standard signature.");
+            return Err("PNG header does not match standard signature.".into());
         }
 
         let mut chunks: Vec<Chunk> = Vec::new();
@@ -105,8 +119,6 @@ impl TryFrom<&[u8]> for Png {
         let mut end: usize = start;
         let mut next_length: usize;
         let mut length_bytes: [u8; 4];
-
-        println!("length: {}", value.len());
 
         while end < value.len() {
             // parse the length of the data of the next chunk
@@ -120,7 +132,6 @@ impl TryFrom<&[u8]> for Png {
 
             // start the next chunk at the end of the previous chunk
             start = end;
-            println!("start: {}\tend: {}", start, end);
         }
 
         Ok(Png { chunks })

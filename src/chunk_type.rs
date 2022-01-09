@@ -57,21 +57,21 @@ impl ChunkType {
 }
 
 impl FromStr for ChunkType {
-    type Err = &'static str;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut bytes: [u8; 4] = Default::default();
         let input: &[u8] = s.as_bytes();
 
         if input.len() < bytes.len() {
-            return Err("Invalid ChunkType. String must contain 4 characters to satisfy the requirement of a 4-byte chunk type code.")
+            return Err("Invalid ChunkType. String must contain 4 characters to satisfy the requirement of a 4-byte chunk type code.".into())
         }
 
         for idx in 0..bytes.len() {
             bytes[idx] = input[idx];
 
             if !ChunkType::is_valid_byte(&bytes[idx]) {
-                return Err("Type codes are restricted to consist of uppercase and lowercase ASCII letters (A-Z and a-z, or 65-90 and 97-122 decimal).");
+                return Err("Type codes are restricted to consist of uppercase and lowercase ASCII letters (A-Z and a-z, or 65-90 and 97-122 decimal).".into());
             }
         }
 
@@ -80,12 +80,12 @@ impl FromStr for ChunkType {
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {
-    type Error = &'static str;
+    type Error = String;
 
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
         for byte in value.iter() {
             if !ChunkType::is_valid_byte(byte) {
-                return Err("Type codes are restricted to consist of uppercase and lowercase ASCII letters (A-Z and a-z, or 65-90 and 97-122 decimal).");
+                return Err("Type codes are restricted to consist of uppercase and lowercase ASCII letters (A-Z and a-z, or 65-90 and 97-122 decimal).".into());
             }
         }
 
