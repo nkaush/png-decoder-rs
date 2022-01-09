@@ -1,7 +1,10 @@
-# png-decorder-rs
+# png-decoder-rs
 A PNG image encoder/decoder used to hide messages in PNG images.
 
-# Usage
+1. [Usage Instructions](#Usage-Instructions)
+2. [Example Usage](#Example-Usage)
+
+# Usage Instructions
 The executable this project produces has the capability to...
 * [`encode`](#Encode) a secret message within a PNG image using a secret chunk type code
 * [`decode`](#Decode) all secret messages within a PNG image using a secret chunk type code
@@ -61,4 +64,39 @@ ARGS:
 
 OPTIONS:
     -h, --help    Print help information
+```
+
+# Example Usage
+```
+$ ./png decode images/dice.png ruSt
+$ ./png encode images/dice.png ruSt 'This is a secret message.'
+$ ./png decode images/dice.png ruSt                            
+This is a secret message.
+$ ./png print images/dice.png                                  
+Chunk {
+  Length: 13
+  Type: IHDR
+  Data: 13 bytes
+  Crc: 804134823
+}
+
+...
+
+Chunk {
+  Length: 25
+  Type: ruSt
+  Data: 25 bytes
+  Crc: 3261152786
+}
+
+Chunk {
+  Length: 0
+  Type: IEND
+  Data: 0 bytes
+  Crc: 2923585666
+}
+
+$ ./png remove images/dice.png ruSt                            
+$ ./png decode images/dice.png ruSt
+$ 
 ```
