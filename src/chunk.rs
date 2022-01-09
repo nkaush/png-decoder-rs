@@ -4,6 +4,8 @@ use std::string::FromUtf8Error;
 use crc::Crc;
 use std::fmt;
 
+/// A validated PNG chunk. See the PNG Spec for more details
+/// http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
 pub struct Chunk {
     length: u32,
     chunk_type: ChunkType,
@@ -12,6 +14,8 @@ pub struct Chunk {
 }
 
 impl Chunk {
+    /// Constructs a new `Chunk` from a given `ChunckType` and the associated 
+    /// byte data given as a `Vec<u8>`.
     pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
         let crc_bytes: Vec<u8> = chunk_type
             .bytes()
@@ -28,26 +32,38 @@ impl Chunk {
         }
     }
 
+    /// The length of the data portion of this chunk.
     pub fn length(&self) -> u32 {
         self.length
     }
 
+    /// The `ChunkType` of this chunk.
     pub fn chunk_type(&self) -> &ChunkType {
         &self.chunk_type
     }
     
+    /// The raw data contained in this chunk in bytes.
     pub fn data(&self) -> &[u8] {
         &self.data
     }
     
+    /// The CRC of this chunk.
     pub fn crc(&self) -> u32 {
         self.crc
     }
     
+    /// Returns the data stored in this chunk as a `String`. This function will return an error
+    /// if the stored data is not valid UTF-8.
     pub fn data_as_string(&self) -> Result<String, FromUtf8Error> {
         String::from_utf8(self.data.clone())
     }
     
+    /// Returns this chunk as a byte sequences described by the PNG spec.
+    /// The following data is included in this byte sequence in order:
+    /// 1. Length of the data *(4 bytes)*
+    /// 2. Chunk type *(4 bytes)*
+    /// 3. The data itself *(`length` bytes)*
+    /// 4. The CRC of the chunk type and data *(4 bytes)*
     pub fn as_bytes(&self) -> Vec<u8> {
         self.length
             .to_be_bytes()
@@ -85,11 +101,15 @@ impl TryFrom<&[u8]> for Chunk {
 }
 
 impl fmt::Display for Chunk {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self.data_as_string() {
-            Ok(s) => write!(f, "{}", s),
-            Err(_) => Err(fmt::Error)
-        }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Chunk {{",)?;
+        writeln!(f, "  Length: {}", self.length())?;
+        writeln!(f, "  Type: {}", self.chunk_type())?;
+        writeln!(f, "  Data: {} bytes", self.data().len())?;
+        writeln!(f, "  Crc: {}", self.crc())?;
+        writeln!(f, "}}",)?;
+        
+        Ok(())
     }
 }
 

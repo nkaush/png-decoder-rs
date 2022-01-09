@@ -2,25 +2,37 @@ use crate::chunk_type::ChunkType;
 use crate::chunk::Chunk;
 use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
-use std::fmt;
+use std::path::Path;
+use std::{fs, fmt};
 
+/// A PNG container as described by the PNG spec
+/// http://www.libpng.org/pub/png/spec/1.2/PNG-Contents.html
 pub struct Png {
     chunks: Vec<Chunk>
 }
 
 impl Png {
+    /// This array is the PNG file signature. The first eight bytes of a PNG 
+    /// file always contain the following (decimal) values. 
     const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
 
+    /// Creates a `Png` from a list of chunks using the correct header
     pub fn from_chunks(chunks: Vec<Chunk>) -> Png {
-        Png {
-            chunks
-        }
+        Png { chunks }
     }
 
+    /// Creates a `Png` from a file path
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, ()> {
+        todo!()
+    }
+
+    /// Appends a chunk to the end of this `Png` file's `Chunk` list.
     pub fn append_chunk(&mut self, chunk: Chunk) {
         self.chunks.push(chunk);
     }
     
+    /// Searches for a `Chunk` with the specified `chunk_type` and removes the 
+    /// first matching `Chunk` from this `Png` list of chunks.
     pub fn remove_chunk(&mut self, chunk_type: &str) -> Result<Chunk, &str> {
         let cmp: ChunkType = match ChunkType::from_str(chunk_type) {
             Ok(ct) => ct,
@@ -36,14 +48,18 @@ impl Png {
         Err("Could not find chunk with specified chunk type.")
     }
     
+    /// The header of this PNG.
     pub fn header(&self) -> &[u8; 8] {
         &Png::STANDARD_HEADER
     }
     
+    /// Lists the `Chunk`s stored in this `Png`
     pub fn chunks(&self) -> &[Chunk] {
         &self.chunks
     }
     
+    /// Searches for a `Chunk` with the specified `chunk_type` and returns the
+    /// first matching `Chunk` from this `Png`.
     pub fn chunk_by_type(&self, chunk_type: &str) -> Option<&Chunk> {
         let cmp: ChunkType = match ChunkType::from_str(chunk_type) {
             Ok(ct) => ct,
@@ -59,6 +75,8 @@ impl Png {
         None
     }
     
+    /// Returns this `Png` as a byte sequence. These bytes will contain the 
+    /// header followed by the bytes of all of the chunks.
     pub fn as_bytes(&self) -> Vec<u8> {
         let chunk_bytes: Vec<u8> = self.chunks
             .iter()

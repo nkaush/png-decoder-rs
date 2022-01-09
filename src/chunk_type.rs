@@ -2,20 +2,27 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 use std::{fmt, str};
 
-/// Little Endian Implementation: 0th (first) byte and/or bit at index 0
+/// A validated PNG chunk type. See the PNG spec for more details.
+/// http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
+/// 
+/// Little Endian Implementation: 0th (first) byte and/or bit at index 0.
 #[derive(Eq, PartialEq, Debug)]
 pub struct ChunkType {
     type_code: [u8; 4]
 }
 
 impl ChunkType {
+    /// Returns the raw bytes contained in this chunk.
     pub fn bytes(&self) -> [u8; 4] {
         self.type_code
     }
 
+    /// Returns true if the reserved byte is valid and all four bytes are 
+    /// represented by the characters A-Z or a-z. Note that this chunk type 
+    /// should always be valid as it is validated during construction.
     pub fn is_valid(&self) -> bool {
         for b in &self.type_code {
-            if !b.is_ascii_lowercase() && !b.is_ascii_uppercase() {
+            if Self::is_valid_byte(b) {
                 return false;
             }
         }
@@ -23,20 +30,29 @@ impl ChunkType {
         self.is_reserved_bit_valid()
     }
 
+    /// Returns the property state of the first byte as described in the PNG spec.
     pub fn is_critical(&self) -> bool {
         self.type_code[0].is_ascii_uppercase()
     }
 
+    /// Returns the property state of the second byte as described in the PNG spec.
     pub fn is_public(&self) -> bool {
         self.type_code[1].is_ascii_uppercase()
     }
 
+    /// Returns the property state of the third byte as described in the PNG spec.
     pub fn is_reserved_bit_valid(&self) -> bool {
         self.type_code[2].is_ascii_uppercase()
     }
 
+    /// Returns the property state of the fourth byte as described in the PNG spec.
     pub fn is_safe_to_copy(&self) -> bool {
         self.type_code[3].is_ascii_lowercase()
+    }
+
+    /// Valid bytes are represented by the characters A-Z or a-z.
+    pub fn is_valid_byte(byte: &u8) -> bool {
+        byte.is_ascii_lowercase() || byte.is_ascii_uppercase()
     }
 }
 
@@ -54,7 +70,7 @@ impl FromStr for ChunkType {
         for idx in 0..bytes.len() {
             bytes[idx] = input[idx];
 
-            if !bytes[idx].is_ascii_lowercase() && !bytes[idx].is_ascii_uppercase() {
+            if !ChunkType::is_valid_byte(&bytes[idx]) {
                 return Err("Type codes are restricted to consist of uppercase and lowercase ASCII letters (A-Z and a-z, or 65-90 and 97-122 decimal).");
             }
         }
@@ -68,7 +84,7 @@ impl TryFrom<[u8; 4]> for ChunkType {
 
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
         for byte in value.iter() {
-            if byte.is_ascii_lowercase() && byte.is_ascii_uppercase() {
+            if !ChunkType::is_valid_byte(byte) {
                 return Err("Type codes are restricted to consist of uppercase and lowercase ASCII letters (A-Z and a-z, or 65-90 and 97-122 decimal).");
             }
         }
