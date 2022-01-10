@@ -5,6 +5,9 @@ mod png;
 use args::{Executable, Subcommands};
 use clap::Parser;
 
+use std::convert::TryFrom;
+use png::chunk_specs::IHDR;
+
 fn main() -> Result<(), String> {    
     let args = Executable::parse();
 
@@ -17,3 +20,12 @@ fn main() -> Result<(), String> {
 
     Ok(())
 }
+
+// fn main() -> Result<(), String> {
+//     let image = png::Png::from_file("images/dice.png")?;
+
+//     let ihdr = IHDR::try_from(image.chunks()[0].clone())?;
+//     println!("{}", ihdr);
+
+//     Ok(())
+// }

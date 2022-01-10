@@ -6,7 +6,7 @@ use std::{fmt, str};
 /// http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
 /// 
 /// Little Endian Implementation: 0th (first) byte and/or bit at index 0.
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Clone)]
 pub struct ChunkType {
     type_code: [u8; 4]
 }

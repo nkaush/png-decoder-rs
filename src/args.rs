@@ -31,7 +31,9 @@ pub struct EncodeArguments {
     /// The 4-byte chunk type code to use to add messages under
     pub chunk_type: String,
     /// The message to encode
-    pub message: String
+    pub message: String,
+    /// [Optional] The filepath to write the encoded image to
+    pub destination: Option<PathBuf>
 }
 
 #[derive(Args)]

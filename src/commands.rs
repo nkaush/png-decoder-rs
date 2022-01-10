@@ -18,7 +18,12 @@ pub fn encode(args: &EncodeArguments) -> Result<(), String> {
     );
     png.append_chunk(new_chunk);
 
-    match fs::write(&args.path, png.as_bytes()) {
+    let outfile = match &args.destination {
+        Some(p) => p,
+        None => &args.path
+    };
+
+    match fs::write(outfile, png.as_bytes()) {
         Ok(_) => Ok(()),
         Err(_) => Err(format!("Could not save to file '{:#?}'", &args.path))
     }
@@ -59,9 +64,7 @@ pub fn remove(args: &RemoveArguments) -> Result<(), String> {
 pub fn print_chunks(args: &PrintArguments) -> Result<(), String> {
     let png: Png = Png::from_file(&args.path)?;
 
-    for chunk in png.chunks() {
-        println!("{}", chunk);
-    }
+    print!("{}", png);
 
     Ok(())
 }

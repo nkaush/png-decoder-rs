@@ -1,5 +1,6 @@
 mod chunk;
 mod chunk_type;
+pub mod chunk_specs;
 
 pub use chunk::*;
 pub use chunk_type::*;
@@ -143,7 +144,11 @@ impl TryFrom<&[u8]> for Png {
 
 impl fmt::Display for Png {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{}", "hi".to_string())
+        for chunk in self.chunks() {
+            writeln!(f, "{}", chunk);
+        }
+
+        Ok(())
     }
 }
 
