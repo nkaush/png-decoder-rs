@@ -1,4 +1,5 @@
 
+use super::verify_crc;
 use super::{chunk_type::ChunkType, chunk::Chunk, chunk};
 
 use std::convert::{TryFrom, TryInto};
@@ -28,6 +29,17 @@ impl Chunk for GenericChunk {
             data,
             crc
         })
+    }
+
+    fn from_be_bytes(bytes: &[u8]) -> Result<Self, String>  {
+        let chunk_type_bytes: [u8; 4] = bytes[4..8].try_into().unwrap();
+        let crc_bytes: [u8; 4] = bytes[bytes.len() - 4..].try_into().unwrap();
+
+        Self::new(
+            ChunkType::try_from(chunk_type_bytes)?,
+            bytes[8..bytes.len() - 4].into(),
+            u32::from_be_bytes(crc_bytes)
+        )
     }
 
     /// The length of the data portion of this chunk.
@@ -78,23 +90,7 @@ impl TryFrom<&[u8]> for GenericChunk {
     type Error = String;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {        
-        let chunk_type_bytes: [u8; 4] = value[4..8].try_into().unwrap();
-
-        let crc_bytes: [u8; 4] = value[value.len() - 4..].try_into().unwrap();
-        let given_crc: u32 = u32::from_be_bytes(crc_bytes);
-        let crc_obj = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
-        let crc: u32 = crc_obj.checksum(&value[4..value.len() - 4]);
-
-        if crc != given_crc {
-            return Err("Computed CRC does not match given CRC.".into());
-        }
-
-        Ok(Self {
-            length: u32::from_be_bytes(value[..4].try_into().unwrap()),
-            chunk_type: ChunkType::try_from(chunk_type_bytes)?,
-            data: value[8..value.len() - 4].into(),
-            crc
-        })
+        Self::from_be_bytes(value)
     }
 }
 

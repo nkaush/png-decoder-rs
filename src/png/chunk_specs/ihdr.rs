@@ -79,6 +79,17 @@ impl Chunk for IHDR {
         Ok(ihdr)
     }
 
+    fn from_be_bytes(bytes: &[u8]) -> Result<Self, String>  {
+        let chunk_type_bytes: [u8; 4] = bytes[4..8].try_into().unwrap();
+        let crc_bytes: [u8; 4] = bytes[bytes.len() - 4..].try_into().unwrap();
+
+        Self::new(
+            ChunkType::new(chunk_type_bytes)?,
+            bytes[8..bytes.len() - 4].to_vec(),
+            u32::from_be_bytes(crc_bytes)
+        )
+    }
+
     fn length(&self) -> u32 {
         self.length
     }
@@ -104,15 +115,7 @@ impl TryFrom<&[u8]> for IHDR {
     type Error = String;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        let chunk_type = ChunkType::new(value[..4].try_into().unwrap())?;
-
-        let ihdr = Self::new(
-            chunk_type, 
-            value[4..value.len() - 4].to_vec(),
-            u32::from_be_bytes(value[value.len() - 4..].try_into().unwrap())
-        )?;
-
-        Ok(ihdr)
+        Self::from_be_bytes(value)
     }
 }
 

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::fs;
 
-use crate::png::{Chunk, ChunkType, Png};
+use crate::png::{Png, chunk_specs::*};
 use crate::args::{
     EncodeArguments, 
     DecodeArguments, 
@@ -12,7 +12,7 @@ use crate::args::{
 /// Encodes a message into a PNG file and saves the result
 pub fn encode(args: &EncodeArguments) -> Result<(), String> {
     let mut png: Png = Png::from_file(&args.path)?;
-    let new_chunk: Chunk = Chunk::new(
+    let new_chunk: GenericChunk = GenericChunk::new(
         ChunkType::from_str(args.chunk_type.as_str())?, 
         args.message.as_bytes().to_vec()
     );

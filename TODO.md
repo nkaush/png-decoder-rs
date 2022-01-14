@@ -1,0 +1,1 @@
+- [ ] Make Chunk::new() NOT take in crc. The crc validation is only required when forming a chunk from Big Endian bytes.

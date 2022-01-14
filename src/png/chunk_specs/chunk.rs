@@ -10,6 +10,9 @@ pub trait Chunk {
     fn new(chunk_type: ChunkType, data: Vec<u8>, crc: u32) 
         -> Result<Self, String> where Self: std::marker::Sized;
 
+    fn from_be_bytes(bytes: &[u8]) 
+        -> Result<Self, String> where Self: std::marker::Sized;
+
     /// The length of the data portion of this chunk.
     fn length(&self) -> u32;
 

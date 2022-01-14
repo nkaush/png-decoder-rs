@@ -119,6 +119,11 @@ impl TryFrom<&[u8]> for Png {
         let mut end: usize = start;
         let mut next_length: usize;
         let mut length_bytes: [u8; 4];
+        let mut chunk_type_bytes: [u8; 4];
+        let mut chunk_type: ChunkType;
+        let mut crc_bytes: [u8; 4];
+        let mut given_crc: u32;
+        let mut data: Vec<u8>;
 
         while end < value.len() {
             // parse the length of the data of the next chunk
@@ -128,7 +133,16 @@ impl TryFrom<&[u8]> for Png {
             // length, chunk type, and crc fields compose 12 bytes in a chunk
             end = start + next_length + 12;
 
-            chunks.push(Box::new(Chunk::try_from(&value[start..end])?));
+            chunk_type_bytes = value[start + 4..start + 8].try_into().unwrap();
+            chunk_type = chunk_type_bytes.try_into().unwrap();
+            crc_bytes = value[end - 4..end].try_into().unwrap();
+            given_crc = u32::from_be_bytes(crc_bytes);
+            data = value[start + 8..end - 4].to_vec();
+
+            let chunk: Box<dyn Chunk> = match chunk_type.to_string().as_ref() {
+                "IHDR" => Box::new(IHDR::new(chunk_type, data, given_crc)?),
+                _ => Box::new(GenericChunk::new(chunk_type, data, given_crc)?)
+            };
 
             // start the next chunk at the end of the previous chunk
             start = end;
@@ -152,8 +166,9 @@ impl fmt::Display for Png {
 mod tests {
     use super::*;
     use std::convert::TryFrom;
+    use crc::Crc;
 
-    fn testing_chunks() -> Vec<Chunk> {
+    fn testing_chunks() -> Vec<Box<dyn Chunk>> {
         let mut chunks = Vec::new();
 
         chunks.push(chunk_from_strings("FrSt", "I am the first chunk").unwrap());
@@ -169,13 +184,17 @@ mod tests {
     }
 
     fn chunk_from_strings(chunk_type: &str, data: &str) 
-            -> Result<Chunk, Box<dyn std::error::Error>> {
-        use std::str::FromStr;
-
+            -> Result<Box<dyn Chunk>, Box<dyn std::error::Error>> {
         let chunk_type = ChunkType::from_str(chunk_type)?;
         let data: Vec<u8> = data.bytes().collect();
+        let crc_bytes: Vec<u8> = chunk_type.bytes()
+                .iter()
+                .chain(data.iter())
+                .copied()
+                .collect();
 
-        Ok(Chunk::new(chunk_type, data))
+        let crc: u32 = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(&crc_bytes);
+        Ok(Box::new(GenericChunk::new(chunk_type, data, crc)?))
     }
 
     #[test]
