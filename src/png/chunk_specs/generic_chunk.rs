@@ -1,4 +1,6 @@
-use crate::png::chunk_type::ChunkType;
+
+use super::{chunk_type::ChunkType, chunk::Chunk, chunk};
+
 use std::convert::{TryFrom, TryInto};
 use std::string::FromUtf8Error;
 use crc::Crc;
@@ -7,55 +9,50 @@ use std::fmt;
 /// A validated PNG chunk. See the PNG Spec for more details
 /// http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
 #[derive(Clone)]
-pub struct Chunk {
+pub struct GenericChunk {
     length: u32,
     chunk_type: ChunkType,
     data: Vec<u8>,
     crc: u32
 }
 
-impl Chunk {
+impl Chunk for GenericChunk {
     /// Constructs a new `Chunk` from a given `ChunckType` and the associated 
     /// byte data given as a `Vec<u8>`.
-    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
-        let crc_bytes: Vec<u8> = chunk_type
-            .bytes()
-            .iter()
-            .chain(data.iter())
-            .copied()
-            .collect();
+    fn new(chunk_type: ChunkType, data: Vec<u8>, crc: u32) -> Result<Self, String> {
+        chunk::verify_crc(&chunk_type, &data, crc)?;
 
-        Chunk {
+        Ok(Self {
             length: data.len() as u32,
             chunk_type,
             data,
-            crc: Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(&crc_bytes)
-        }
+            crc
+        })
     }
 
     /// The length of the data portion of this chunk.
-    pub fn length(&self) -> u32 {
+    fn length(&self) -> u32 {
         self.length
     }
 
     /// The `ChunkType` of this chunk.
-    pub fn chunk_type(&self) -> &ChunkType {
+    fn chunk_type(&self) -> &ChunkType {
         &self.chunk_type
     }
     
     /// The raw data contained in this chunk in bytes.
-    pub fn data(&self) -> &[u8] {
+    fn data(&self) -> &[u8] {
         &self.data
     }
     
     /// The CRC of this chunk.
-    pub fn crc(&self) -> u32 {
+    fn crc(&self) -> u32 {
         self.crc
     }
     
     /// Returns the data stored in this chunk as a `String`. This function will return an error
     /// if the stored data is not valid UTF-8.
-    pub fn data_as_string(&self) -> Result<String, FromUtf8Error> {
+    fn data_as_string(&self) -> Result<String, FromUtf8Error> {
         String::from_utf8(self.data.clone())
     }
     
@@ -65,7 +62,7 @@ impl Chunk {
     /// 2. Chunk type *(4 bytes)*
     /// 3. The data itself *(`length` bytes)*
     /// 4. The CRC of the chunk type and data *(4 bytes)*
-    pub fn as_bytes(&self) -> Vec<u8> {
+    fn as_bytes(&self) -> Vec<u8> {
         self.length
             .to_be_bytes()
             .iter()
@@ -77,7 +74,7 @@ impl Chunk {
     }
 }
 
-impl TryFrom<&[u8]> for Chunk {
+impl TryFrom<&[u8]> for GenericChunk {
     type Error = String;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {        
@@ -92,7 +89,7 @@ impl TryFrom<&[u8]> for Chunk {
             return Err("Computed CRC does not match given CRC.".into());
         }
 
-        Ok(Chunk {
+        Ok(Self {
             length: u32::from_be_bytes(value[..4].try_into().unwrap()),
             chunk_type: ChunkType::try_from(chunk_type_bytes)?,
             data: value[8..value.len() - 4].into(),
@@ -101,7 +98,7 @@ impl TryFrom<&[u8]> for Chunk {
     }
 }
 
-impl fmt::Display for Chunk {
+impl fmt::Display for GenericChunk {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Chunk {{",)?;
         writeln!(f, "  Length: {}", self.length())?;
@@ -118,7 +115,7 @@ impl fmt::Display for Chunk {
 mod tests {
     use super::*;
 
-    fn testing_chunk() -> Chunk {
+    fn testing_chunk() -> GenericChunk {
         let data_length: u32 = 42;
         let chunk_type = "RuSt".as_bytes();
         let message_bytes = "This is where your secret message will be!".as_bytes();
@@ -133,7 +130,7 @@ mod tests {
             .copied()
             .collect();
         
-        Chunk::try_from(chunk_data.as_ref()).unwrap()
+        GenericChunk::try_from(chunk_data.as_ref()).unwrap()
     }
 
     #[test]
@@ -178,7 +175,7 @@ mod tests {
             .copied()
             .collect();
 
-        let chunk = Chunk::try_from(chunk_data.as_ref()).unwrap();
+        let chunk = GenericChunk::try_from(chunk_data.as_ref()).unwrap();
 
         let chunk_string = chunk.data_as_string().unwrap();
         let expected_chunk_string = String::from("This is where your secret message will be!");
@@ -205,7 +202,7 @@ mod tests {
             .copied()
             .collect();
 
-        let chunk = Chunk::try_from(chunk_data.as_ref());
+        let chunk = GenericChunk::try_from(chunk_data.as_ref());
 
         assert!(chunk.is_err());
     }
@@ -226,7 +223,7 @@ mod tests {
             .copied()
             .collect();
         
-        let chunk: Chunk = TryFrom::try_from(chunk_data.as_ref()).unwrap();
+        let chunk: GenericChunk = TryFrom::try_from(chunk_data.as_ref()).unwrap();
         
         let _chunk_string = format!("{}", chunk);
     }

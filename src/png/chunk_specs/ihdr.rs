@@ -1,84 +1,116 @@
-use crate::png::{Chunk, ChunkType};
+use super::{chunk::Chunk, chunk_type::ChunkType, chunk};
 use std::convert::{TryFrom, TryInto};
-use std::str::FromStr;
+use std::string::FromUtf8Error;
 use std::fmt;
 
 pub struct IHDR {
-    width: u32,
-    height: u32,
-    bit_depth: u8,
-    color_type: u8,
-    compression_method: u8,
-    filter_method: u8,
-    interlace_method: u8
+    length: u32,
+    chunk_type: ChunkType,
+    data: Vec<u8>,
+    crc: u32
 }
 
 impl IHDR {
+    const CHUNK_TYPE: &'static str = "IHDR";
+
     fn width(&self) -> u32 {
-        self.width
+        u32::from_be_bytes(self.data[..4].try_into().unwrap())
     }
 
     fn height(&self) -> u32 {
-        self.height
+        u32::from_be_bytes(self.data[4..8].try_into().unwrap())
     }
 
     fn bit_depth(&self) -> u8 {
-        self.bit_depth
+        self.data[8]
     }
 
     fn color_type(&self) -> u8 {
-        self.color_type
+        self.data[9]
     } 
 
     fn compression_method(&self) -> u8 {
-        self.compression_method
+        self.data[10]
     }
     
     fn filter_method(&self) -> u8 {
-        self.filter_method
+        self.data[11]
     }
 
     fn interlace_method(&self) -> u8 {
-        self.interlace_method
+        self.data[12]
     }
 }
 
-impl TryFrom<Chunk> for IHDR {
-    type Error = String;
+impl Chunk for IHDR {
+    fn new(chunk_type: ChunkType, data: Vec<u8>, crc: u32) -> Result<Self, String> {
+        chunk::verify_crc(&chunk_type, &data, crc)?;
 
-    fn try_from(value: Chunk) -> Result<Self, Self::Error> {
-        let expected_type: ChunkType = ChunkType::from_str("IHDR")?;
+        if data.len() != 13 {
+            return Err(format!("Chunk length {} does not match expected length 13.", data.len()));
+        }
 
-        if &expected_type != value.chunk_type() {
+        if format!("{}", chunk_type) != Self::CHUNK_TYPE.to_string() {
             return Err("Chunk type does not match expected chunk type 'IHDR'".into());
         }
 
-        if value.length() != 13 {
-            return Err(format!("Chunk length {} does not match expected length 13.", value.length()));
-        }
-
-        let ihdr = IHDR {
-            width: u32::from_be_bytes(value.data()[0..4].try_into().unwrap()),
-            height: u32::from_be_bytes(value.data()[4..8].try_into().unwrap()),
-            bit_depth: value.data()[8],
-            color_type: value.data()[9],
-            compression_method: value.data()[10],
-            filter_method: value.data()[11],
-            interlace_method: value.data()[12]
+        let ihdr = Self {
+            length: data.len() as u32,
+            chunk_type,
+            data,
+            crc
         };
 
-        let valid_combination = match ihdr.color_type {
-            0 => matches!(ihdr.bit_depth, 1 | 2 | 4 | 8 | 16),
-            2 => matches!(ihdr.bit_depth, 8 | 16),
-            3 => matches!(ihdr.bit_depth, 1 | 2 | 4 | 8),
-            4 => matches!(ihdr.bit_depth, 8 | 16),
-            6 => matches!(ihdr.bit_depth, 8 | 16),
+        let bit_depth = ihdr.bit_depth();
+
+        let is_valid_combination = match ihdr.color_type() {
+            0 => matches!(bit_depth, 1 | 2 | 4 | 8 | 16),
+            2 => matches!(bit_depth, 8 | 16),
+            3 => matches!(bit_depth, 1 | 2 | 4 | 8),
+            4 => matches!(bit_depth, 8 | 16),
+            6 => matches!(bit_depth, 8 | 16),
             _ => false
         };
 
-        if !valid_combination {
+        if !is_valid_combination {
             return Err("Invalid color type and bit depth combination.".into());
         }
+
+        Ok(ihdr)
+    }
+
+    fn length(&self) -> u32 {
+        self.length
+    }
+
+    fn chunk_type(&self) -> &ChunkType {
+        &self.chunk_type
+    }
+    
+    fn data(&self) -> &[u8] {
+        &self.data
+    }
+    
+    fn crc(&self) -> u32 {
+        self.crc
+    }
+    
+    fn data_as_string(&self) -> Result<String, FromUtf8Error> {
+        String::from_utf8(self.data.clone())
+    }
+}
+
+impl TryFrom<&[u8]> for IHDR {
+    type Error = String;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        let chunk_type = ChunkType::new(value[..4].try_into().unwrap())?;
+
+        let ihdr = Self::new(
+            chunk_type, 
+            value[4..value.len() - 4].to_vec(),
+            u32::from_be_bytes(value[value.len() - 4..].try_into().unwrap())
+        )?;
 
         Ok(ihdr)
     }
@@ -86,7 +118,7 @@ impl TryFrom<Chunk> for IHDR {
 
 impl fmt::Display for IHDR {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "IHDR Image header {{",)?;
+        writeln!(f, "IHDR Image Header {{",)?;
         writeln!(f, "  Width: {}", self.width())?;
         writeln!(f, "  Height: {}", self.height())?;
         writeln!(f, "  Bit Depth: {}", self.bit_depth())?;

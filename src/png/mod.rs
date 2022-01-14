@@ -1,19 +1,15 @@
-mod chunk;
-mod chunk_type;
 pub mod chunk_specs;
-
-pub use chunk::*;
-pub use chunk_type::*;
 
 use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 use std::path::Path;
 use std::{fs, fmt};
+use chunk_specs::*;
 
 /// A PNG container as described by the PNG spec
 /// http://www.libpng.org/pub/png/spec/1.2/PNG-Contents.html
 pub struct Png {
-    chunks: Vec<Chunk>
+    chunks: Vec<Box<dyn Chunk>>
 }
 
 impl Png {
@@ -22,7 +18,7 @@ impl Png {
     const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
 
     /// Creates a `Png` from a list of chunks using the correct header
-    pub fn from_chunks(chunks: Vec<Chunk>) -> Png {
+    pub fn from_chunks(chunks: Vec<Box<dyn Chunk>>) -> Png {
         Png { chunks }
     }
 
@@ -41,7 +37,7 @@ impl Png {
     }
 
     /// Appends a chunk to the end of this `Png` file's `Chunk` list.
-    pub fn append_chunk(&mut self, chunk: Chunk) {
+    pub fn append_chunk(&mut self, chunk: Box<dyn Chunk>) {
         self.chunks.push(chunk);
 
         // swap end with first from end to preserve IEND chunk at end
@@ -51,7 +47,7 @@ impl Png {
     
     /// Searches for a `Chunk` with the specified `chunk_type` and removes the 
     /// first matching `Chunk` from this `Png` list of chunks.
-    pub fn remove_chunk(&mut self, chunk_type: &str) -> Result<Chunk, String> {
+    pub fn remove_chunk(&mut self, chunk_type: &str) -> Result<Box<dyn Chunk>, String> {
         let cmp: ChunkType = match ChunkType::from_str(chunk_type) {
             Ok(ct) => ct,
             Err(_) => return Err("Could not find chunk with specified chunk type.".into())
@@ -72,13 +68,13 @@ impl Png {
     }
     
     /// Lists the `Chunk`s stored in this `Png`
-    pub fn chunks(&self) -> &[Chunk] {
+    pub fn chunks(&self) -> &[Box<dyn Chunk>] {
         &self.chunks
     }
     
     /// Searches for a `Chunk` with the specified `chunk_type` and returns the
     /// first matching `Chunk` from this `Png`.
-    pub fn chunk_by_type(&self, chunk_type: &str) -> Option<&Chunk> {
+    pub fn chunk_by_type(&self, chunk_type: &str) -> Option<&Box<dyn Chunk>> {
         let cmp: ChunkType = match ChunkType::from_str(chunk_type) {
             Ok(ct) => ct,
             Err(_) => return None
@@ -86,7 +82,7 @@ impl Png {
 
         for chunk in self.chunks.iter() {
             if chunk.chunk_type() == &cmp {
-                return Some(&chunk);
+                return Some(chunk);
             }
         }
 
@@ -117,7 +113,7 @@ impl TryFrom<&[u8]> for Png {
             return Err("PNG header does not match standard signature.".into());
         }
 
-        let mut chunks: Vec<Chunk> = Vec::new();
+        let mut chunks: Vec<Box<dyn Chunk>> = Vec::new();
 
         let mut start: usize = 8;
         let mut end: usize = start;
@@ -132,7 +128,7 @@ impl TryFrom<&[u8]> for Png {
             // length, chunk type, and crc fields compose 12 bytes in a chunk
             end = start + next_length + 12;
 
-            chunks.push(Chunk::try_from(&value[start..end])?);
+            chunks.push(Box::new(Chunk::try_from(&value[start..end])?));
 
             // start the next chunk at the end of the previous chunk
             start = end;

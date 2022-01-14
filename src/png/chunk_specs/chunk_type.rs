@@ -12,6 +12,10 @@ pub struct ChunkType {
 }
 
 impl ChunkType {
+    pub fn new(bytes: [u8; 4]) -> Result<Self, String> {
+        TryFrom::try_from(bytes)
+    }
+
     /// Returns the raw bytes contained in this chunk.
     pub fn bytes(&self) -> [u8; 4] {
         self.type_code
